@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Задачи по программированию - {{ session.position }}</title>
+    <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .task-panel {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .code-panel {
+            flex: 2;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .task-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .meta-tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .difficulty-easy {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .difficulty-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .difficulty-hard {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .language-tag {
+            background: #e7f3ff;
+            color: #004085;
+        }
+        
+        .time-tag {
+            background: #f0f0f0;
+            color: #495057;
+        }
+        
+        .task-description {
+            line-height: 1.8;
+            color: #495057;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+        
+        .test-cases {
+            margin-top: 20px;
+        }
+        
+        .test-case {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .test-case-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .test-case-content {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #495057;
+        }
+        
+        .hints-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff9e6;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .hints-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .hint {
+            color: #856404;
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .hint:before {
+            content: "💡";
+            position: absolute;
+            left: 0;
+        }
+        
+        #editor {
+            height: 400px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .code-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .results-panel {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .test-result {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid;
+        }
+        
+        .test-result.passed {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .test-result.failed {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        
+        .test-result-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .test-result-details {
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .summary {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .summary-title {
+            font-weight: 600;
+            color: #004085;
+            margin-bottom: 10px;
+        }
+        
+        .quality-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .metric {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #007bff;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .language-selector {
+            margin-bottom: 15px;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔥 Задачи по программированию</h1>
+            <p>Позиция: <strong>{{ session.position }}</strong> | Уровень: <strong>{{ session.level }}</strong></p>
+        </header>
+        
+        <div class="main-content">
+            <!-- Панель задачи -->
+            <div class="task-panel">
+                <div id="taskContent">
+                    <div style="text-align: center; padding: 40px; color: #6c757d;">
+                        <p>Выберите язык программирования и нажмите "Сгенерировать задачу"</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Панель кода и результатов -->
+            <div class="code-panel">
+                <div class="language-selector">
+                    <label>Язык программирования:</label>
+                    <select id="languageSelect">
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                    </select>
+                </div>
+                
+                <div class="code-controls">
+                    <button class="btn btn-primary" id="generateTaskBtn">🎯 Сгенерировать задачу</button>
+                    <button class="btn btn-success" id="runCodeBtn" disabled>▶️ Запустить тесты</button>
+                    <button class="btn btn-secondary" id="validateBtn" disabled>✓ Проверить синтаксис</button>
+                </div>
+                
+                <div id="editor"></div>
+                
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <p>Выполнение тестов...</p>
+                </div>
+                
+                <div class="results-panel" id="resultsPanel"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let editor;
+        let currentTask = null;
+        const sessionId = '{{ session.session_id }}';
+        
+        // Инициализация Monaco Editor
+        require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.33.0/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: '# Напишите ваше решение здесь\n\ndef solution():\n    pass\n',
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+            });
+        });
+        
+        // Элементы
+        const generateTaskBtn = document.getElementById('generateTaskBtn');
+        const runCodeBtn = document.getElementById('runCodeBtn');
+        const validateBtn = document.getElementById('validateBtn');
+        const languageSelect = document.getElementById('languageSelect');
+        const taskContent = document.getElementById('taskContent');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // Обработчики событий
+        generateTaskBtn.addEventListener('click', generateTask);
+        runCodeBtn.addEventListener('click', runCode);
+        validateBtn.addEventListener('click', validateCode);
+        
+        languageSelect.addEventListener('change', function() {
+            const language = this.value;
+            monaco.editor.setModelLanguage(editor.getModel(), language);
+            
+            if (language === 'python') {
+                editor.setValue('# Напишите ваше решение здесь\n\ndef solution():\n    pass\n');
+            } else {
+                editor.setValue('// Напишите ваше решение здесь\n\nfunction solution() {\n    \n}\n');
+            }
+        });
+        
+        async function generateTask() {
+            const language = languageSelect.value;
+            
+            generateTaskBtn.disabled = true;
+            generateTaskBtn.textContent = '⏳ Генерация...';
+            
+            try {
+                const response = await fetch('/api/generate_coding_task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        language: language
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentTask = data.task;
+                    displayTask(data.task);
+                    editor.setValue(data.task.solution_template || '');
+                    
+                    runCodeBtn.disabled = false;
+                    validateBtn.disabled = false;
+                } else {
+                    alert('Ошибка генерации задачи: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при генерации задачи');
+            } finally {
+                generateTaskBtn.disabled = false;
+                generateTaskBtn.textContent = '🎯 Сгенерировать задачу';
+            }
+        }
+        
+        function displayTask(task) {
+            let html = `
+                <div class="task-title">${task.title}</div>
+                <div class="task-meta">
+                    <span class="meta-tag difficulty-${task.difficulty}">${getDifficultyText(task.difficulty)}</span>
+                    <span class="meta-tag language-tag">${task.language.toUpperCase()}</span>
+                    <span class="meta-tag time-tag">⏱️ ${task.time_limit}с</span>
+                    <span class="meta-tag time-tag">💾 ${task.memory_limit}MB</span>
+                </div>
+                <div class="task-description">${task.description}</div>
+                
+                <div class="test-cases">
+                    <h3>📝 Тест-кейсы (${task.test_cases.length} видимых):</h3>
+            `;
+            
+            task.test_cases.forEach((tc, idx) => {
+                html += `
+                    <div class="test-case">
+                        <div class="test-case-title">Тест ${idx + 1}: ${tc.description}</div>
+                        <div class="test-case-content">
+                            <strong>Вход:</strong> ${JSON.stringify(tc.input)}<br>
+                            <strong>Ожидаемый выход:</strong> ${JSON.stringify(tc.expected)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (task.hidden_test_count > 0) {
+                html += `
+                    <div class="test-case" style="border-color: #6c757d;">
+                        <div class="test-case-title">🔒 Скрытых тестов: ${task.hidden_test_count}</div>
+                        <div class="test-case-content">Эти тесты будут использованы для проверки, но не показаны</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            
+            if (task.hints && task.hints.length > 0) {
+                html += `
+                    <div class="hints-section">
+                        <div class="hints-title">💡 Подсказки:</div>
+                `;
+                task.hints.forEach(hint => {
+                    html += `<div class="hint">${hint}</div>`;
+                });
+                html += '</div>';
+            }
+            
+            taskContent.innerHTML = html;
+        }
+        
+        function getDifficultyText(difficulty) {
+            const map = {
+                'easy': 'Легко',
+                'medium': 'Средне',
+                'hard': 'Сложно'
+            };
+            return map[difficulty] || difficulty;
+        }
+        
+        async function runCode() {
+            if (!currentTask) {
+                alert('Сначала сгенерируйте задачу');
+                return;
+            }
+            
+            const code = editor.getValue();
+            const language = languageSelect.value;
+            
+            loadingIndicator.classList.add('active');
+            resultsPanel.innerHTML = '';
+            runCodeBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/submit_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        code: code,
+                        language: language
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    resultsPanel.innerHTML = `
+                        <div class="error-message">
+                            <strong>Ошибка:</strong> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsPanel.innerHTML = `
+                    <div class="error-message">
+                        <strong>Ошибка:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                loadingIndicator.classList.remove('active');
+                runCodeBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(data) {
+            const testResults = data.test_results;
+            const quality = data.code_quality;
+            
+            let html = `
+                <div class="summary">
+                    <div class="summary-title">
+                        ${testResults.all_tests_passed ? '✅ Все тесты пройдены!' : '❌ Некоторые тесты не прошли'}
+                    </div>
+                    <div>
+                        <strong>Пройдено тестов:</strong> ${testResults.passed_tests} из ${testResults.total_tests} 
+                        (${testResults.pass_rate}%)
+                    </div>
+                    <div>
+                        <strong>Время выполнения:</strong> ${testResults.execution_time}с
+                    </div>
+                    
+                    <div class="quality-metrics">
+                        <div class="metric">
+                            <div class="metric-value">${quality.quality_score}</div>
+                            <div class="metric-label">Качество кода</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${quality.readability_score}</div>
+                            <div class="metric-label">Читаемость</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${quality.complexity}</div>
+                            <div class="metric-label">Сложность</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${quality.lines_of_code}</div>
+                            <div class="metric-label">Строк кода</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Результаты тестов
+            html += '<h3>📊 Результаты тестов:</h3>';
+            testResults.test_results.forEach((result, idx) => {
+                const cssClass = result.passed ? 'passed' : 'failed';
+                const icon = result.passed ? '✅' : '❌';
+                
+                html += `
+                    <div class="test-result ${cssClass}">
+                        <div class="test-result-header">${icon} Тест ${idx + 1}: ${result.description}</div>
+                        <div class="test-result-details">
+                            Вход: ${result.input}<br>
+                            Ожидалось: ${result.expected}
+                `;
+                
+                if (result.actual !== undefined) {
+                    html += `<br>Получено: ${result.actual}`;
+                }
+                
+                if (result.error) {
+                    html += `<br><span style="color: #dc3545;">Ошибка: ${result.error}</span>`;
+                }
+                
+                html += '</div></div>';
+            });
+            
+            // Замечания по коду
+            if (quality.code_smells && quality.code_smells.length > 0) {
+                html += '<h3>⚠️ Проблемы в коде:</h3>';
+                quality.code_smells.forEach(smell => {
+                    html += `<div class="test-result failed"><div class="test-result-header">${smell}</div></div>`;
+                });
+            }
+            
+            // Рекомендации
+            if (quality.suggestions && quality.suggestions.length > 0) {
+                html += '<h3>💡 Рекомендации:</h3>';
+                quality.suggestions.forEach(suggestion => {
+                    html += `<div class="test-result" style="background: #fff9e6; border-color: #ffc107;">
+                        <div class="test-result-header">${suggestion}</div>
+                    </div>`;
+                });
+            }
+            
+            resultsPanel.innerHTML = html;
+        }
+        
+        async function validateCode() {
+            const code = editor.getValue();
+            const language = languageSelect.value;
+            
+            validateBtn.disabled = true;
+            validateBtn.textContent = '⏳ Проверка...';
+            
+            try {
+                const response = await fetch('/api/validate_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        language: language
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.valid) {
+                        resultsPanel.innerHTML = `
+                            <div class="summary">
+                                <div class="summary-title">✅ Код валиден</div>
+                                <div>${data.message}</div>
+                            </div>
+                        `;
+                    } else {
+                        resultsPanel.innerHTML = `
+                            <div class="error-message">
+                                <strong>Проблема валидации:</strong> ${data.message}
+                            </div>
+                        `;
+                    }
+                } else {
+                    alert('Ошибка валидации: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при валидации кода');
+            } finally {
+                validateBtn.disabled = false;
+                validateBtn.textContent = '✓ Проверить синтаксис';
+            }
+        }
+    </script>
+</body>
+</html>
