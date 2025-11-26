@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: vibecodejam_interview
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - LLM_BASE_URL=https://llm.t1v.scibox.tech/v1
+      - LLM_MODEL=qwen3-coder-30b-a3b-instruct-fp8
+      - LLM_TOKEN=sk--hwyMZDmxjPMm50_5LXTiA
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    networks:
+      - interview_network
+
+networks:
+  interview_network:
+    driver: bridge

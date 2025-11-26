@@ -1,0 +1,38 @@
+# Production Dockerfile с Gunicorn
+FROM python:3.13-slim
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Устанавливаем системные зависимости
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Копируем requirements.txt
+COPY requirements.txt .
+
+# Устанавливаем Python зависимости + Gunicorn
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# Копируем весь проект
+COPY . .
+
+# Создаем непривилегированного пользователя
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Открываем порт 5000
+EXPOSE 5000
+
+# Устанавливаем переменные окружения
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+ENV PYTHONUNBUFFERED=1
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:5000/', timeout=5)"
+
+# Запускаем приложение с Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
