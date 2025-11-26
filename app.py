@@ -14,7 +14,7 @@ class Config:
     # Настройки из документации SciBox
     LLM_BASE_URL = "https://llm.t1v.scibox.tech/v1"
     LLM_MODEL = "qwen3-32b-awq"
-    LLM_TOKEN = "sk-1234"  # ⚠️ ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ ТОКЕН ⚠️
+    LLM_TOKEN = "sk--hwyMZDmxjPMm50_5LXTiA"  # ⚠️ ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ ТОКЕН ⚠️
     
     # Параметры запроса
     TEMPERATURE = 0.7
@@ -84,8 +84,7 @@ def chat_with_model(messages, model=Config.LLM_MODEL):
     try:
         print(f"🔧 Отправка запроса к LLM через OpenAI клиент")
         print(f"   Model: {model}")
-        print(f"   Messages: {len(messages)}")
-        
+
         response = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -93,10 +92,13 @@ def chat_with_model(messages, model=Config.LLM_MODEL):
             top_p=Config.TOP_P,
             max_tokens=Config.MAX_TOKENS
         )
-        
+
         print("✅ LLM ответ получен успешно")
+        # Добавьте эту строку для отладки:
+        debug_llm_response(response)
+
         return response
-        
+
     except Exception as e:
         print(f"❌ Ошибка соединения с LLM: {e}")
         raise e
@@ -104,71 +106,126 @@ def chat_with_model(messages, model=Config.LLM_MODEL):
 # Генерация вопросов через LLM
 def generate_interview_question(session, previous_answers=None):
     try:
+        # Более простой и конкретный промпт
         prompt = f"""
-        Ты - профессиональный технический интервьюер на позицию {session.position} уровня {session.level}.
-        Тип собеседования: {session.interview_type}
-        Тип компании: {session.company_type}
-        
-        Уже заданные вопросы: {session.questions_asked[-3:] if session.questions_asked else 'Нет'}
-        
-        Сгенерируй ОДИН релевантный технический вопрос для собеседования.
-        Вопрос должен быть:
-        - Конкретным и техническим
-        - Соответствовать уровню позиции {session.level}
-        - Не повторять предыдущие вопросы
-        - Помочь оценить реальные навыки кандидата
-        
-        Верни ТОЛЬКО текст вопроса без дополнительных комментариев.
-        """
-        
+Вопросы задавать на русском языке
+ROLE: Technical interviewer for {session.position} {session.level} position
+INTERVIEW TYPE: {session.interview_type}
+COMPANY: {session.company_type}
+
+PREVIOUS QUESTIONS: {session.questions_asked[-2:] if session.questions_asked else 'None'}
+
+TASK: Generate exactly ONE technical interview question.
+
+REQUIREMENTS:
+- Must be a single question only
+- Technical and relevant to {session.position}
+- Appropriate for {session.level} level
+- Different from previous questions
+- Practical and skills-focused
+
+FORMAT: Return ONLY the question text, nothing else.
+
+QUESTION:
+"""
+
         messages = [
             {
-                "role": "system", 
-                "content": "Ты опытный технический интервьюер. Генерируй только вопросы без дополнительного текста."
+                "role": "system",
+                "content": "You are a technical interviewer. Generate exactly one interview question. Return ONLY the question text without any additional text, explanations, or formatting."
             },
             {
                 "role": "user",
                 "content": prompt
             }
         ]
-        
+
+        print(f"🎯 Generating question for {session.position} {session.level}")
         response = chat_with_model(messages)
         question = response.choices[0].message.content.strip()
-        
-        # Очистка ответа от возможных мета-комментариев
+
+        print(f"📨 Raw LLM response: '{question}'")
+
+        # Улучшенная очистка ответа
         question = clean_llm_response(question)
-            
-        # Если LLM вернула пустой вопрос, используем fallback
-        if not question or len(question) < 10:
-            print("LLM вернула пустой вопрос, использую fallback")
+
+        # Более строгая проверка пустого вопроса
+        if not question or len(question.strip()) < 15 or not any(char.isalpha() for char in question):
+            print("❌ LLM returned empty or invalid question, using fallback")
             return get_fallback_question(session)
-            
-        print(f"✅ Сгенерирован вопрос: {question}")
+
+        # Проверяем, что это действительно вопрос (содержит вопросительный знак или вопросное слово)
+        question_words = ['как', 'что', 'почему', 'расскажите', 'объясните', 'how', 'what', 'why', 'explain']
+        has_question_mark = '?' in question
+        starts_with_question_word = any(question.lower().startswith(word) for word in question_words)
+
+        if not (has_question_mark or starts_with_question_word):
+            print("⚠️ LLM response doesn't look like a question, using fallback")
+            return get_fallback_question(session)
+
+        print(f"✅ Generated question: {question}")
         return question
-        
+
     except Exception as e:
-        print(f"❌ Ошибка генерации вопроса с LLM: {e}")
+        print(f"❌ Error generating question with LLM: {e}")
         return get_fallback_question(session)
+
 
 def clean_llm_response(text):
     """Очистка ответа от LLM от лишних форматирований"""
     if not text:
         return text
-        
-    # Удаляем маркеры кода
-    text = text.replace('```json', '').replace('```', '').strip()
-    
-    # Удаляем возможные префиксы
-    prefixes = ["Вопрос:", "Ответ:", "Оценка:", "JSON:"]
-    for prefix in prefixes:
-        if text.startswith(prefix):
-            text = text[len(prefix):].strip()
-    
-    # Берем первую строку если есть переносы
-    if "\n" in text:
-        text = text.split("\n")[0].strip()
-        
+
+    # Удаляем кавычки в начале и конце
+    text = text.strip('"\'').strip()
+
+    # Удаляем маркеры кода и форматирования
+    formatting_marks = ['```json', '```python', '```', 'QUESTION:', 'Вопрос:', 'Answer:', 'Ответ:']
+    for mark in formatting_marks:
+        text = text.replace(mark, '').strip()
+
+    # Удаляем нумерацию в начале (1. 2. и т.д.)
+    import re
+    text = re.sub(r'^\d+[\.\)]\s*', '', text)
+
+    # Берем первую строку если есть переносы (но сохраняем сложные вопросы)
+    lines = text.split('\n')
+    if len(lines) > 1:
+        # Если первая строка достаточно длинная, используем только ее
+        if len(lines[0].strip()) > 20:
+            text = lines[0].strip()
+        else:
+            # Иначе объединяем первые две строки
+            text = ' '.join(lines[:2]).strip()
+
+    # Убедимся, что вопрос заканчивается знаком вопроса
+    if text and not text.endswith('?') and len(text) > 10:
+        text = text + '?'
+
     return text
+
+
+def debug_llm_response(response):
+    """Детальное логирование ответа LLM"""
+    if not response or not hasattr(response, 'choices'):
+        print("🔍 DEBUG: No response or invalid response object")
+        return
+
+    choice = response.choices[0]
+    message = choice.message
+
+    print(f"🔍 DEBUG LLM RESPONSE:")
+    print(f"   Finish reason: {choice.finish_reason}")
+    print(f"   Content: '{message.content}'")
+    print(f"   Content length: {len(message.content)}")
+    print(f"   Role: {message.role}")
+
+    # Логируем все атрибуты сообщения
+    for attr in dir(message):
+        if not attr.startswith('_'):
+            value = getattr(message, attr)
+            if value and attr != 'content':
+                print(f"   {attr}: {value}")
 
 def get_fallback_question(session):
     """Fallback вопросы если LLM недоступна"""
@@ -223,70 +280,59 @@ def evaluate_answer(question, answer, position, level, contains_code=False, lang
     try:
         if contains_code:
             prompt = f"""
-            [СТРОГАЯ ИНСТРУКЦИЯ: ВЕРНИ ТОЛЬКО JSON БЕЗ ЛЮБОГО ДОПОЛНИТЕЛЬНОГО ТЕКСТА]
-
-            Ты - технический интервьюер на позицию {position} уровня {level}.
-            Проанализируй код кандидата и дай объективную оценку.
-
             ВОПРОС: {question}
-            
-            КОД КАНДИДАТА (язык: {language}):
-            ```{language}
+            КОД ({language}):
             {answer}
-            ```
 
-            Проанализируй код по критериям и поставь оценку от 1 до 10:
-            - Корректность решения
-            - Качество и читаемость кода
-            - Эффективность алгоритма  
-            - Обработка edge cases
-            - Следование best practices
+            Проанализируй код кандидата по критериям:
+            1. Корректность решения
+            2. Качество и читаемость кода
+            3. Эффективность алгоритма
+            4. Обработка edge cases
+            5. Следование best practices
 
-            ВЕРНИ ТОЛЬКО JSON:
-            {{
-                "score": число от 1 до 10,
-                "feedback": "конкретная обратная связь",
-                "strengths": ["сильная сторона 1", "сильная сторона 2"],
-                "improvements": ["улучшение 1", "улучшение 2"],
-                "code_analysis": {{
-                    "correctness": "оценка корректности",
-                    "readability": "оценка читаемости",
-                    "efficiency": "оценка эффективности",
-                    "best_practices": "следование best practices"
-                }}
-            }}
+            ОЦЕНКА: от 1 до 10
+            СИЛЬНЫЕ СТОРОНЫ: 2-3 пункта
+            РЕКОМЕНДАЦИИ: 2-3 пункта
+
+            Формат ответа:
+            ОЦЕНКА: [число]/10
+            СИЛЬНЫЕ СТОРОНЫ: [пункт1], [пункт2], [пункт3]
+            РЕКОМЕНДАЦИИ: [пункт1], [пункт2], [пункт3]
             """
         else:
             prompt = f"""
-            [СТРОГАЯ ИНСТРУКЦИЯ: ВЕРНИ ТОЛЬКО JSON БЕЗ ЛЮБОГО ДОПОЛНИТЕЛЬНОГО ТЕКСТА]
-
-            Ты - технический интервьюер на позицию {position} уровня {level}.
-            Оцени ответ кандидата на вопрос.
-
             ВОПРОС: {question}
-            
-            ОТВЕТ КАНДИДАТА: {answer}
+            ОТВЕТ: {answer}
 
-            Проанализируй ответ по критериям и поставь оценку от 1 до 10:
-            - Техническая глубина и точность
-            - Практическая применимость знаний
-            - Структура и ясность изложения
-            - Соответствие уровню позиции
-            - Наличие конкретных примеров
+            Проанализируй ответ кандидата по критериям:
+            1. Техническая глубина и точность
+            2. Практическая применимость знаний
+            3. Структура и ясность изложения
+            4. Соответствие уровню позиции {level}
+            5. Наличие конкретных примеров
 
-            ВЕРНИ ТОЛЬКО JSON:
-            {{
-                "score": число от 1 до 10,
-                "feedback": "конкретная обратная связь",
-                "strengths": ["сильная сторона 1", "сильная сторона 2"],
-                "improvements": ["улучшение 1", "улучшение 2"]
-            }}
+            ОЦЕНКА: от 1 до 10
+            СИЛЬНЫЕ СТОРОНЫ: 2-3 пункта
+            РЕКОМЕНДАЦИИ: 2-3 пункта
+
+            Формат ответа:
+            ОЦЕНКА: [число]/10
+            СИЛЬНЫЕ СТОРОНЫ: [пункт1], [пункт2], [пункт3]
+            РЕКОМЕНДАЦИИ: [пункт1], [пункт2], [пункт3]
             """
 
         messages = [
             {
                 "role": "system",
-                "content": "Ты строгий технический интервьюер. Возвращай ТОЛЬКО валидный JSON. Никакого дополнительного текста."
+                "content": """Ты строгий технический интервьюер. Анализируй ответы кандидатов и давай конструктивную обратную связь.
+
+Всегда отвечай в строгом формате:
+ОЦЕНКА: [число]/10
+СИЛЬНЫЕ СТОРОНЫ: [пункт1], [пункт2], [пункт3]
+РЕКОМЕНДАЦИИ: [пункт1], [пункт2], [пункт3]
+
+Не добавляй никакого дополнительного текста."""
             },
             {
                 "role": "user",
@@ -297,36 +343,88 @@ def evaluate_answer(question, answer, position, level, contains_code=False, lang
         print(f"📊 Отправка запроса на оценку ответа")
         response = chat_with_model(messages)
         evaluation_text = response.choices[0].message.content.strip()
-        
-        print(f"📨 Получен ответ от LLM: {evaluation_text[:200]}...")
-        
-        # Очистка и парсинг JSON
-        evaluation_text = clean_llm_response(evaluation_text)
-        evaluation = json.loads(evaluation_text)
-        
-        # Валидация оценки
-        if 'score' not in evaluation:
-            evaluation['score'] = 5
-        else:
-            evaluation['score'] = max(1, min(10, int(evaluation['score'])))
-            
-        # Добавляем анализ кода если это код
-        if contains_code and 'code_analysis' not in evaluation:
-            evaluation['code_analysis'] = {
-                "correctness": "Анализ не выполнен",
-                "readability": "Анализ не выполнен", 
-                "efficiency": "Анализ не выполнен",
-                "best_practices": "Анализ не выполнен"
-            }
-            
+
+        print(f"📨 Получен ответ от LLM: {evaluation_text}")
+
+        # Парсим текстовый ответ вместо JSON
+        evaluation = parse_text_evaluation(evaluation_text, contains_code)
+
         print(f"✅ Оценка сформирована: {evaluation['score']}/10")
         return evaluation
-        
-    except json.JSONDecodeError as e:
-        print(f"❌ Ошибка парсинга JSON: {e}")
-        return get_fallback_evaluation(contains_code, 5)
+
     except Exception as e:
         print(f"❌ Ошибка оценки ответа: {e}")
+        return get_fallback_evaluation(contains_code, 5)
+
+
+def parse_text_evaluation(text, contains_code=False):
+    """Парсит текстовый ответ от LLM в структурированную оценку"""
+    try:
+        # Инициализируем дефолтную оценку
+        evaluation = {
+            "score": 5,
+            "feedback": "Ответ требует более детального анализа",
+            "strengths": [],
+            "improvements": []
+        }
+
+        if contains_code:
+            evaluation["code_analysis"] = {
+                "correctness": "Требует проверки",
+                "readability": "Требует проверки",
+                "efficiency": "Требует проверки",
+                "best_practices": "Требует проверки"
+            }
+
+        lines = text.split('\n')
+
+        for line in lines:
+            line = line.strip()
+
+            # Парсим оценку
+            if line.startswith('ОЦЕНКА:') or line.startswith('SCORE:'):
+                try:
+                    # Ищем число в строке
+                    import re
+                    numbers = re.findall(r'\d+', line)
+                    if numbers:
+                        score = int(numbers[0])
+                        evaluation["score"] = max(1, min(10, score))
+                except:
+                    pass
+
+            # Парсим сильные стороны
+            elif line.startswith('СИЛЬНЫЕ СТОРОНЫ:') or line.startswith('STRENGTHS:'):
+                content = line.split(':', 1)[1].strip()
+                strengths = [s.strip() for s in content.split(',') if s.strip()]
+                evaluation["strengths"] = strengths[:3]  # Берем первые 3
+
+            # Парсим рекомендации
+            elif line.startswith('РЕКОМЕНДАЦИИ:') or line.startswith('IMPROVEMENTS:') or line.startswith(
+                    'RECOMMENDATIONS:'):
+                content = line.split(':', 1)[1].strip()
+                improvements = [s.strip() for s in content.split(',') if s.strip()]
+                evaluation["improvements"] = improvements[:3]  # Берем первые 3
+
+        # Создаем фидбек на основе оценки
+        if evaluation["score"] >= 8:
+            evaluation["feedback"] = "Отличный ответ! Продемонстрированы глубокие знания и практический опыт."
+        elif evaluation["score"] >= 6:
+            evaluation["feedback"] = "Хороший ответ, но есть возможности для улучшения."
+        else:
+            evaluation["feedback"] = "Ответ требует более глубокого раскрытия темы и практических примеров."
+
+        # Если не нашли сильных сторон/рекомендаций, добавляем дефолтные
+        if not evaluation["strengths"]:
+            evaluation["strengths"] = ["Базовое понимание темы", "Структурированный ответ"]
+
+        if not evaluation["improvements"]:
+            evaluation["improvements"] = ["Добавить больше технических деталей", "Привести практические примеры"]
+
+        return evaluation
+
+    except Exception as e:
+        print(f"❌ Ошибка парсинга текстовой оценки: {e}")
         return get_fallback_evaluation(contains_code, 5)
 
 def get_fallback_evaluation(contains_code=False, score=5):
