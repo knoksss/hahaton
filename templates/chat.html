@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Собеседование - {{ session.position }}</title>
+    <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #eaeaea;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+        
+        .chat-container {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eaeaea;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .interview-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .control-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .start-btn {
+            background: #007bff;
+            color: white;
+        }
+        
+        .start-btn:hover {
+            background: #0068d7;
+        }
+        
+        .pause-btn {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .pause-btn:hover {
+            background: #e0a800;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.4;
+            position: relative;
+        }
+        
+        .user-message {
+            align-self: flex-end;
+            background: #007bff;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .ai-message {
+            align-self: flex-start;
+            background: #f1f3f5;
+            color: #333;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #eaeaea;
+            background: #f8f9fa;
+        }
+        
+        .chat-input textarea {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            padding: 12px 20px;
+            resize: none;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .chat-input textarea:focus {
+            border-color: #007bff;
+        }
+        
+        .send-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            margin-left: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+        
+        .send-button:hover {
+            background: #0056b3;
+        }
+        
+        .send-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .interview-info {
+            margin-bottom: 20px;
+        }
+        
+        .info-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .info-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .interview-progress {
+            margin-top: 20px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .progress-text {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .new-chat-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: auto;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .new-chat-btn:hover {
+            background: #0056b3;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: #f1f3f5;
+            border-radius: 18px;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+            width: fit-content;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #7f8c8d;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            30% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+        
+        .interview-complete {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .complete-title {
+            font-size: 24px;
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+
+        /* Стили для IDE */
+        .code-editor-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .code-editor-container {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .editor-header {
+            padding: 20px;
+            border-bottom: 1px solid #eaeaea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .language-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .editor-body {
+            flex: 1;
+            display: flex;
+        }
+
+        #monaco-editor {
+            width: 100%;
+            height: 100%;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .editor-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eaeaea;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .cancel-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .cancel-btn:hover {
+            background: #5a6268;
+        }
+
+        .submit-code-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .submit-code-btn:hover {
+            background: #218838;
+        }
+
+        .code-response-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .code-response-btn:hover {
+            background: #138496;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+
+        .code-language {
+            background: #007acc;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .evaluation-block {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .code-analysis {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .code-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .score-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+            
+            .interview-controls {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Interview AI с LLM</h1>
+            <p class="subtitle">Умное собеседование с анализом ответов через искусственный интеллект</p>
+        </header>
+        
+        <div class="chat-container">
+            <div class="sidebar">
+                <div class="interview-info">
+                    <div class="info-title">Информация о собеседовании</div>
+                    <div class="info-content">
+                        <p><strong>Должность:</strong> <span id="position">{{ session.position }}</span></p>
+                        <p><strong>Уровень:</strong> <span id="level">{{ session.level }}</span></p>
+                        <p><strong>Тип:</strong> <span id="type">{{ session.interview_type }}</span></p>
+                        <p><strong>Компания:</strong> <span id="company">{{ session.company_type }}</span></p>
+                        <p><strong>Вопросов:</strong> <span id="questionCount">5</span></p>
+                    </div>
+                </div>
+                
+                <div class="interview-progress">
+                    <div class="info-title">Прогресс собеседования</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Не начато</div>
+                </div>
+                
+                <button class="new-chat-btn" id="newChatBtn">Новое собеседование</button>
+            </div>
+            
+            <div class="chat-area">
+                <div class="chat-header">
+                    <h3>Собеседование: {{ session.position }} ({{ session.level }})</h3>
+                    <div class="interview-controls">
+                        <button class="control-btn start-btn" id="startBtn">Начать</button>
+                        <button class="control-btn pause-btn" id="pauseBtn" disabled>Пауза</button>
+                        <button class="code-response-btn" id="openEditorBtn" disabled>
+                            📝 Ответить кодом
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message ai-message">
+                        <div>Здравствуйте! Приветствую Вас на собеседовании на позицию {{ session.position }} уровня {{ session.level }}. 
+                        <br><br>🤖 <strong>ИИ будет анализировать ваши ответы</strong> и предоставлять детальную обратную связь.
+                        <br><br>Когда будете готовы, нажмите кнопку "Начать".</div>
+                        <div class="message-time" id="initialTime">12:00</div>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <textarea id="messageInput" placeholder="Введите ваш ответ..." rows="1" disabled></textarea>
+                    <button class="send-button" id="sendButton" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактора кода -->
+    <div class="code-editor-modal" id="codeEditorModal">
+        <div class="code-editor-container">
+            <div class="editor-header">
+                <h3>Редактор кода</h3>
+                <div class="editor-controls">
+                    <select class="language-select" id="languageSelect">
+                        <option value="javascript">JavaScript</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                        <option value="php">PHP</option>
+                        <option value="ruby">Ruby</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                    </select>
+                </div>
+            </div>
+            <div class="editor-body">
+                <div id="monaco-editor"></div>
+            </div>
+            <div class="editor-footer">
+                <button class="modal-btn cancel-btn" id="cancelCodeBtn">Отмена</button>
+                <button class="modal-btn submit-code-btn" id="submitCodeBtn">Отправить код</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Monaco Editor
+        require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.33.0/min/vs' }});
+        
+        let monacoEditor = null;
+        let currentSessionId = {{ session | tojson | safe }}.session_id;
+        
+        require(['vs/editor/editor.main'], function() {
+            monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: '// Напишите ваш код здесь\nfunction solution() {\n    // Ваше решение\n    return "Hello World";\n}',
+                language: 'javascript',
+                theme: 'vs-dark',
+                fontSize: 14,
+                minimap: { enabled: true },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                wordWrap: 'on'
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const openEditorBtn = document.getElementById('openEditorBtn');
+            const newChatBtn = document.getElementById('newChatBtn');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const codeEditorModal = document.getElementById('codeEditorModal');
+            const cancelCodeBtn = document.getElementById('cancelCodeBtn');
+            const submitCodeBtn = document.getElementById('submitCodeBtn');
+            const languageSelect = document.getElementById('languageSelect');
+            
+            let interviewActive = false;
+            let interviewPaused = false;
+            let totalQuestions = 5;
+
+            // Управление модальным окном редактора
+            openEditorBtn.addEventListener('click', function() {
+                codeEditorModal.style.display = 'flex';
+            });
+
+            cancelCodeBtn.addEventListener('click', function() {
+                codeEditorModal.style.display = 'none';
+            });
+
+            languageSelect.addEventListener('change', function() {
+                if (monacoEditor) {
+                    monaco.editor.setModelLanguage(monacoEditor.getModel(), this.value);
+                }
+            });
+
+            submitCodeBtn.addEventListener('click', async function() {
+                if (!monacoEditor) return;
+                
+                const code = monacoEditor.getValue();
+                const language = languageSelect.value;
+                
+                if (!code.trim()) {
+                    alert('Пожалуйста, напишите код');
+                    return;
+                }
+                
+                codeEditorModal.style.display = 'none';
+                
+                // Добавляем код в чат
+                addCodeMessage(code, language, 'user');
+                
+                // Отправляем код на сервер
+                await submitCodeAnswer(code, language);
+            });
+
+            // Остальные обработчики событий...
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+            
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            sendButton.addEventListener('click', sendMessage);
+            
+            startBtn.addEventListener('click', startInterview);
+            
+            pauseBtn.addEventListener('click', togglePauseInterview);
+            
+            newChatBtn.addEventListener('click', function() {
+                if (confirm('Начать новое собеседование? Текущий диалог будет удален.')) {
+                    window.location.href = '/setup';
+                }
+            });
+            
+            async function startInterview() {
+                try {
+                    const response = await fetch('/api/start_interview', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            position: {{ session | tojson | safe }}.position,
+                            level: {{ session | tojson | safe }}.level,
+                            interview_type: {{ session | tojson | safe }}.interview_type,
+                            company_type: {{ session | tojson | safe }}.company_type
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        interviewActive = true;
+                        currentSessionId = data.session_id;
+                        startBtn.disabled = true;
+                        pauseBtn.disabled = false;
+                        messageInput.disabled = false;
+                        sendButton.disabled = false;
+                        openEditorBtn.disabled = false;
+                        
+                        addMessage("🎯 Отлично! Давайте начнем собеседование. У вас будет " + data.total_questions + " вопросов.", 'ai');
+                        addMessage("💡 <strong>Совет:</strong> Отвечайте подробно - ИИ проанализирует ваш ответ и даст обратную связь.", 'ai');
+                        
+                        setTimeout(() => {
+                            addMessage(data.question, 'ai');
+                            updateProgress(data.question_number, data.total_questions);
+                        }, 1000);
+                    } else {
+                        alert('Ошибка при запуске собеседования: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error starting interview:', error);
+                    alert('Ошибка при запуске собеседования');
+                }
+            }
+            
+            function togglePauseInterview() {
+                interviewPaused = !interviewPaused;
+                
+                if (interviewPaused) {
+                    pauseBtn.textContent = "Продолжить";
+                    messageInput.disabled = true;
+                    sendButton.disabled = true;
+                    openEditorBtn.disabled = true;
+                    addMessage("⏸️ Собеседование приостановлено. Нажмите 'Продолжить', чтобы возобновить.", 'ai');
+                } else {
+                    pauseBtn.textContent = "Пауза";
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    openEditorBtn.disabled = false;
+                    addMessage("▶️ Собеседование продолжено.", 'ai');
+                }
+            }
+            
+            async function sendMessage() {
+                if (!interviewActive || interviewPaused || !currentSessionId) return;
+                
+                const message = messageInput.value.trim();
+                if (!message) return;
+                
+                addMessage(message, 'user');
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                
+                showTypingIndicator();
+                
+                try {
+                    const response = await fetch('/api/submit_answer', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            session_id: currentSessionId,
+                            answer: message,
+                            contains_code: false
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    removeTypingIndicator();
+                    
+                    if (data.success) {
+                        if (data.interview_complete) {
+                            handleInterviewComplete(data);
+                        } else {
+                            // Показываем оценку ответа
+                            showEvaluation(data.evaluation, false);
+                            addMessage(data.question, 'ai');
+                            updateProgress(data.question_number, data.total_questions);
+                        }
+                    } else {
+                        alert('Ошибка при отправке ответа: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    removeTypingIndicator();
+                    alert('Ошибка при отправке сообщения');
+                }
+            }
+            
+            async function submitCodeAnswer(code, language) {
+                if (!interviewActive || interviewPaused || !currentSessionId) return;
+                
+                showTypingIndicator();
+                
+                try {
+                    const response = await fetch('/api/submit_answer', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            session_id: currentSessionId,
+                            answer: code,
+                            contains_code: true,
+                            language: language
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    removeTypingIndicator();
+                    
+                    if (data.success) {
+                        if (data.interview_complete) {
+                            handleInterviewComplete(data);
+                        } else {
+                            // Показываем анализ кода
+                            showEvaluation(data.evaluation, true);
+                            addMessage(data.question, 'ai');
+                            updateProgress(data.question_number, data.total_questions);
+                        }
+                    } else {
+                        alert('Ошибка при отправке кода: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error sending code:', error);
+                    removeTypingIndicator();
+                    alert('Ошибка при отправке кода');
+                }
+            }
+            
+            function showEvaluation(evaluation, isCode) {
+                const evaluationDiv = document.createElement('div');
+                evaluationDiv.className = isCode ? 'code-analysis' : 'evaluation-block';
+                
+                if (isCode) {
+                    evaluationDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <strong>Оценка кода:</strong> 
+                            <span class="score-badge">${evaluation.score}/10</span>
+                        </div>
+                        <div><strong>Обратная связь:</strong> ${evaluation.feedback}</div>
+                        <div style="margin-top: 15px;">
+                            <strong>Анализ кода:</strong>
+                            <div class="code-metrics">
+                                <div class="metric">
+                                    <div class="metric-value">${evaluation.code_analysis?.correctness || 'Н/Д'}</div>
+                                    <div class="metric-label">Корректность</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-value">${evaluation.code_analysis?.readability || 'Н/Д'}</div>
+                                    <div class="metric-label">Читаемость</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-value">${evaluation.code_analysis?.efficiency || 'Н/Д'}</div>
+                                    <div class="metric-label">Эффективность</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-value">${evaluation.code_analysis?.best_practices || 'Н/Д'}</div>
+                                    <div class="metric-label">Best Practices</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${evaluation.strengths?.length ? `<div style="margin-top: 10px;"><strong>Сильные стороны:</strong> ${evaluation.strengths.join(', ')}</div>` : ''}
+                        ${evaluation.improvements?.length ? `<div style="margin-top: 10px;"><strong>Области улучшения:</strong> ${evaluation.improvements.join(', ')}</div>` : ''}
+                    `;
+                } else {
+                    evaluationDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <strong>Оценка ответа:</strong> 
+                            <span class="score-badge">${evaluation.score}/10</span>
+                        </div>
+                        <div><strong>Обратная связь:</strong> ${evaluation.feedback}</div>
+                        ${evaluation.strengths?.length ? `<div style="margin-top: 10px;"><strong>Сильные стороны:</strong> ${evaluation.strengths.join(', ')}</div>` : ''}
+                        ${evaluation.improvements?.length ? `<div style="margin-top: 10px;"><strong>Рекомендации:</strong> ${evaluation.improvements.join(', ')}</div>` : ''}
+                    `;
+                }
+                
+                chatMessages.appendChild(evaluationDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function addCodeMessage(code, language, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                const codeLanguage = document.createElement('div');
+                codeLanguage.className = 'code-language';
+                codeLanguage.textContent = language.toUpperCase();
+                
+                const codeBlock = document.createElement('pre');
+                codeBlock.className = 'code-block';
+                codeBlock.textContent = code;
+                
+                const messageTime = document.createElement('div');
+                messageTime.className = 'message-time';
+                messageTime.textContent = getCurrentTime();
+                
+                messageDiv.appendChild(codeLanguage);
+                messageDiv.appendChild(codeBlock);
+                messageDiv.appendChild(messageTime);
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.innerHTML = text;
+                
+                const messageTime = document.createElement('div');
+                messageTime.className = 'message-time';
+                messageTime.textContent = getCurrentTime();
+                
+                messageDiv.appendChild(messageContent);
+                messageDiv.appendChild(messageTime);
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function handleInterviewComplete(data) {
+                interviewActive = false;
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                openEditorBtn.disabled = true;
+                
+                addMessage("🎉 Собеседование завершено! Спасибо за ваши ответы!", 'ai');
+                
+                setTimeout(() => {
+                    showInterviewResults(data.summary);
+                }, 1000);
+            }
+            
+            function showInterviewResults(summary) {
+                const resultsDiv = document.createElement('div');
+                resultsDiv.className = 'interview-complete';
+                
+                const verdictColor = summary.verdict === 'Рекомендуем к найму' ? '#28a745' : 
+                                   summary.verdict === 'Рассмотреть кандидата' ? '#ffc107' : '#dc3545';
+                
+                resultsDiv.innerHTML = `
+                    <div class="complete-title">Собеседование завершено! 🎓</div>
+                    <div style="background: ${verdictColor}; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong>Вердикт:</strong> ${summary.verdict}
+                    </div>
+                    <p><strong>Итоговый балл:</strong> ${summary.final_score}/10</p>
+                    <p><strong>Всего вопросов:</strong> ${summary.total_questions}</p>
+                    <p><strong>Продолжительность:</strong> ${summary.duration_minutes} минут</p>
+                    <div style="text-align: left; margin: 15px 0;">
+                        <strong>Общая оценка:</strong><br>${summary.summary_text || 'Анализ завершен.'}
+                    </div>
+                    <div style="text-align: left;">
+                        <strong>Сильные стороны:</strong><br>${summary.strengths.join(', ')}
+                    </div>
+                    <div style="text-align: left; margin: 10px 0;">
+                        <strong>Рекомендации по развитию:</strong><br>${summary.improvements.join(', ')}
+                    </div>
+                    <div style="text-align: left;">
+                        <strong>Следующие шаги:</strong><br>${summary.recommendations.join(', ')}
+                    </div>
+                    <p style="margin-top: 15px;">Для начала нового собеседования нажмите кнопку "Новое собеседование"</p>
+                `;
+                
+                chatMessages.appendChild(resultsDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function showTypingIndicator() {
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.id = 'typingIndicator';
+                
+                const typingDots = document.createElement('div');
+                typingDots.className = 'typing-dots';
+                
+                for (let i = 0; i < 3; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'typing-dot';
+                    typingDots.appendChild(dot);
+                }
+                
+                typingDiv.appendChild(typingDots);
+                chatMessages.appendChild(typingDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function removeTypingIndicator() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+            
+            function updateProgress(current, total) {
+                const progress = (current / total) * 100;
+                progressFill.style.width = `${progress}%`;
+                
+                if (current === 0) {
+                    progressText.textContent = "Не начато";
+                } else if (current < total) {
+                    progressText.textContent = `Вопрос ${current} из ${total}`;
+                } else {
+                    progressText.textContent = "Завершено";
+                }
+            }
+            
+            function getCurrentTime() {
+                const now = new Date();
+                return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            }
+            
+            document.getElementById('initialTime').textContent = getCurrentTime();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройка собеседования</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        
+        .skills-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .skill-tag {
+            background: #e9ecef;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #495057;
+        }
+        
+        .start-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 123, 255, 0.3);
+        }
+        
+        .start-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .back-btn {
+            width: 100%;
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+        }
+        
+        .info-text {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Настройка собеседования</h1>
+            <p class="subtitle">Выберите параметры для персонализированного собеседования</p>
+        </div>
+        
+        <form id="interviewSetupForm">
+            <div class="form-group">
+                <label for="position">Должность:</label>
+                <select id="position" name="position" required>
+                    <option value="">Выберите должность</option>
+                    {% for position in positions %}
+                    <option value="{{ position }}">{{ position }}</option>
+                    {% endfor %}
+                </select>
+                <div class="skills-tags" id="positionSkills"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="level">Уровень:</label>
+                <select id="level" name="level" required>
+                    <option value="">Выберите уровень</option>
+                    {% for level in levels %}
+                    <option value="{{ level }}">{{ level }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="interview_type">Тип собеседования:</label>
+                <select id="interview_type" name="interview_type" required>
+                    <option value="">Выберите тип</option>
+                    {% for type in interview_types %}
+                    <option value="{{ type }}">{{ type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="company_type">Тип компании:</label>
+                <select id="company_type" name="company_type" required>
+                    <option value="">Выберите тип компании</option>
+                    {% for company in company_types %}
+                    <option value="{{ company }}">{{ company }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="questions_count">Количество вопросов:</label>
+                <input type="number" id="questions_count" name="questions_count" value="5" min="3" max="10" required>
+            </div>
+            
+            <button type="submit" class="start-btn" id="startBtn">
+                Начать собеседование
+            </button>
+            
+            <button type="button" class="back-btn" onclick="window.location.href='/'">
+                Назад на главную
+            </button>
+        </form>
+        
+        <div class="info-text">
+            ИИ подготовит персонализированные вопросы на основе выбранных параметров
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('interviewSetupForm');
+            const positionSelect = document.getElementById('position');
+            const skillsContainer = document.getElementById('positionSkills');
+            const startBtn = document.getElementById('startBtn');
+            
+            // Данные о навыках для каждой позиции (из бэкенда)
+            const positionSkills = {
+                {% for position, skills in positions.items() %}
+                "{{ position }}": {{ skills | tojson }},
+                {% endfor %}
+            };
+            
+            // Обновление отображаемых навыков при выборе позиции
+            positionSelect.addEventListener('change', function() {
+                const selectedPosition = this.value;
+                skillsContainer.innerHTML = '';
+                
+                if (selectedPosition && positionSkills[selectedPosition]) {
+                    positionSkills[selectedPosition].forEach(skill => {
+                        const skillTag = document.createElement('div');
+                        skillTag.className = 'skill-tag';
+                        skillTag.textContent = skill;
+                        skillsContainer.appendChild(skillTag);
+                    });
+                }
+            });
+            
+            // Обработка отправки формы
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const interviewData = {
+                    position: formData.get('position'),
+                    level: formData.get('level'),
+                    interview_type: formData.get('interview_type'),
+                    company_type: formData.get('company_type'),
+                    questions_count: parseInt(formData.get('questions_count'))
+                };
+                
+                // Валидация формы
+                if (!interviewData.position || !interviewData.level || 
+                    !interviewData.interview_type || !interviewData.company_type) {
+                    alert('Пожалуйста, заполните все поля');
+                    return;
+                }
+                
+                startBtn.disabled = true;
+                startBtn.textContent = 'Запуск собеседования...';
+                
+                try {
+                    const response = await fetch('/api/start_interview', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(interviewData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Перенаправляем в чат с ID сессии
+                        window.location.href = `/chat?session_id=${data.session_id}`;
+                    } else {
+                        alert('Ошибка при запуске собеседования: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error starting interview:', error);
+                    alert('Ошибка при запуске собеседования');
+                } finally {
+                    startBtn.disabled = false;
+                    startBtn.textContent = 'Начать собеседование';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест LLM подключения</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .config-section {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .test-area {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            color: #495057;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Настройка и тестирование LLM подключения</h1>
+        
+        <div class="config-section">
+            <h3>⚙️ Конфигурация LLM</h3>
+            <div>
+                <label>Base URL:</label>
+                <input type="text" id="baseUrl" value="https://affine.ml-dev.scibox.tech" placeholder="https://affine.ml-dev.scibox.tech">
+            </div>
+            <div>
+                <label>API Path:</label>
+                <select id="apiPath">
+                    <option value="/api/v1/chat/completions">/api/v1/chat/completions</option>
+                    <option value="/v1/chat/completions">/v1/chat/completions</option>
+                    <option value="/api/chat">/api/chat</option>
+                    <option value="/chat/completions">/chat/completions</option>
+                    <option value="/workspace/61d6d8eb-6e83-4978-9d0d-37d439046c04/api/chat">/workspace/.../api/chat</option>
+                </select>
+            </div>
+            <div>
+                <label>Модель:</label>
+                <input type="text" id="model" value="qwen3-32b-awq" placeholder="qwen3-32b-awq">
+            </div>
+            <div>
+                <label>Токен:</label>
+                <input type="text" id="token" value="sk-1234" placeholder="Ваш токен">
+            </div>
+            <button onclick="updateConfig()">💾 Обновить конфигурацию</button>
+        </div>
+
+        <div class="test-area">
+            <h3>🧪 Тестирование подключения</h3>
+            <div>
+                <label>Тестовое сообщение:</label>
+                <input type="text" id="testMessage" value="Привет! Ответь коротко - ты работаешь?">
+            </div>
+            <button onclick="testLLM()">🔍 Тестировать LLM</button>
+            <button onclick="testQuestion()">❓ Тест генерации вопроса</button>
+            <button onclick="discoverEndpoints()">🔎 Автопоиск эндпоинтов</button>
+            
+            <div id="testResult"></div>
+        </div>
+
+        <div class="test-area">
+            <h3>📊 Логи подключения</h3>
+            <div id="connectionLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let connectionLog = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            connectionLog.push(`[${timestamp}] ${message}`);
+            document.getElementById('connectionLog').innerHTML = connectionLog.join('\n');
+        }
+
+        async function updateConfig() {
+            const config = {
+                base_url: document.getElementById('baseUrl').value,
+                api_path: document.getElementById('apiPath').value,
+                model: document.getElementById('model').value,
+                token: document.getElementById('token').value
+            };
+            
+            log(`Обновление конфигурации: ${JSON.stringify(config)}`);
+            
+            try {
+                const response = await fetch('/api/update_llm_config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('✅ Конфигурация успешно обновлена');
+                    showResult(data, 'success');
+                } else {
+                    log('❌ Ошибка обновления конфигурации');
+                    showResult(data, 'error');
+                }
+            } catch (error) {
+                log(`❌ Ошибка сети: ${error.message}`);
+                showResult({error: error.message}, 'error');
+            }
+        }
+
+        async function testLLM() {
+            const message = document.getElementById('testMessage').value;
+            log(`Тестирование LLM с сообщением: "${message}"`);
+            
+            try {
+                const response = await fetch('/api/test_llm', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ LLM ответила: "${data.response}"`);
+                    showResult(data, 'success');
+                } else {
+                    log(`❌ Ошибка LLM: ${data.error}`);
+                    showResult(data, 'error');
+                }
+            } catch (error) {
+                log(`❌ Ошибка сети: ${error.message}`);
+                showResult({error: error.message}, 'error');
+            }
+        }
+
+        async function testQuestion() {
+            log('Тестирование генерации вопроса...');
+            
+            try {
+                const response = await fetch('/api/start_interview', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        position: 'Frontend разработчик',
+                        level: 'Middle',
+                        interview_type: 'Техническое',
+                        company_type: 'IT продуктовая'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ Вопрос сгенерирован: "${data.question}"`);
+                    showResult(data, 'success');
+                } else {
+                    log(`❌ Ошибка генерации: ${data.error}`);
+                    showResult(data, 'error');
+                }
+            } catch (error) {
+                log(`❌ Ошибка сети: ${error.message}`);
+                showResult({error: error.message}, 'error');
+            }
+        }
+
+        async function discoverEndpoints() {
+            log('🔍 Запуск автопоиска эндпоинтов...');
+            // Реализация автопоиска будет добавлена позже
+            log('⚠️ Функция автопоиска в разработке');
+        }
+
+        function showResult(data, type) {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${type === 'success' ? '✅ Успех' : '❌ Ошибка'}:</strong><br>${JSON.stringify(data, null, 2)}`;
+        }
+
+        // Инициализация
+        log('Система тестирования LLM запущена');
+        log('Настройте параметры подключения и протестируйте соединение');
+    </script>
+</body>
+</html>
