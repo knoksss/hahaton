@@ -179,29 +179,10 @@
                 </select>
             </div>
             
-            <div class="form-group">
-                <label for="interview_type">Тип собеседования:</label>
-                <select id="interview_type" name="interview_type" required>
-                    <option value="">Выберите тип</option>
-                    {% for type in interview_types %}
-                    <option value="{{ type }}">{{ type }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="company_type">Тип компании:</label>
-                <select id="company_type" name="company_type" required>
-                    <option value="">Выберите тип компании</option>
-                    {% for company in company_types %}
-                    <option value="{{ company }}">{{ company }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="questions_count">Количество вопросов:</label>
-                <input type="number" id="questions_count" name="questions_count" value="5" min="3" max="10" required>
+            <div class="info-text">
+                <p>📝 Собеседование включает:</p>
+                <p><strong>10 задач по программированию</strong></p>
+                <p>⏱️ Примерная длительность: <strong>40-60 минут</strong></p>
             </div>
             
             <button type="submit" class="start-btn" id="startBtn">
@@ -254,15 +235,11 @@
                 const formData = new FormData(form);
                 const interviewData = {
                     position: formData.get('position'),
-                    level: formData.get('level'),
-                    interview_type: formData.get('interview_type'),
-                    company_type: formData.get('company_type'),
-                    questions_count: parseInt(formData.get('questions_count'))
+                    level: formData.get('level')
                 };
                 
                 // Валидация формы
-                if (!interviewData.position || !interviewData.level || 
-                    !interviewData.interview_type || !interviewData.company_type) {
+                if (!interviewData.position || !interviewData.level) {
                     alert('Пожалуйста, заполните все поля');
                     return;
                 }
@@ -282,7 +259,7 @@
                     const data = await response.json();
                     
                     if (data.success) {
-                        // Перенаправляем в чат с ID сессии
+                        // Автоматически перенаправляем в чат (смешанный режим)
                         window.location.href = `/chat?session_id=${data.session_id}`;
                     } else {
                         alert('Ошибка при запуске собеседования: ' + data.error);
