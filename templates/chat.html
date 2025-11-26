@@ -536,7 +536,9 @@
                         <p><strong>Уровень:</strong> <span id="level">{{ session.level }}</span></p>
                         <p><strong>Тип:</strong> <span id="type">{{ session.interview_type }}</span></p>
                         <p><strong>Компания:</strong> <span id="company">{{ session.company_type }}</span></p>
-                        <p><strong>Вопросов:</strong> <span id="questionCount">5</span></p>
+                        <p><strong>Вопросов:</strong> <span id="questionCount">10</span></p>
+
+                        
                     </div>
                 </div>
                 
@@ -744,8 +746,13 @@
                         addMessage("💡 <strong>Совет:</strong> Отвечайте подробно - ИИ проанализирует ваш ответ и даст обратную связь.", 'ai');
                         
                         setTimeout(() => {
-                            addMessage(data.question, 'ai');
-                            updateProgress(data.question_number, data.total_questions);
+                            if (data.next_type === 'coding_task') {
+                                displayCodingTask(data.task);
+                                updateProgress(data.question_number, data.total_questions);
+                            } else if (data.question) {
+                                addMessage(data.question, 'ai');
+                                updateProgress(data.question_number, data.total_questions);
+                            }
                         }, 1000);
                     } else {
                         alert('Ошибка при запуске собеседования: ' + data.error);
@@ -808,7 +815,15 @@
                         } else {
                             // Показываем оценку ответа
                             showEvaluation(data.evaluation, false);
-                            addMessage(data.question, 'ai');
+                            
+                            // Проверяем тип следующего задания
+                            if (data.next_type === 'coding_task') {
+                                // Показываем задачу по программированию
+                                displayCodingTask(data.task);
+                            } else {
+                                // Показываем следующий вопрос
+                                addMessage(data.question, 'ai');
+                            }
                             updateProgress(data.question_number, data.total_questions);
                         }
                     } else {
@@ -827,15 +842,14 @@
                 showTypingIndicator();
                 
                 try {
-                    const response = await fetch('/api/submit_answer', {
+                    const response = await fetch('/api/submit_code', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
                             session_id: currentSessionId,
-                            answer: code,
-                            contains_code: true,
+                            code: code,
                             language: language
                         })
                     });
@@ -843,23 +857,60 @@
                     const data = await response.json();
                     removeTypingIndicator();
                     
+                    console.log('Submit code response:', data);
+                    
                     if (data.success) {
+                        // Показываем результаты тестов
+                        if (data.test_results && data.code_quality) {
+                            showCodeTestResults(data.test_results, data.code_quality);
+                        }
+                        
                         if (data.interview_complete) {
                             handleInterviewComplete(data);
-                        } else {
-                            // Показываем анализ кода
-                            showEvaluation(data.evaluation, true);
+                        } else if (data.next_type === 'coding_task' && data.task) {
+                            displayCodingTask(data.task);
+                            updateProgress(data.question_number, data.total_questions);
+                        } else if (data.question) {
                             addMessage(data.question, 'ai');
                             updateProgress(data.question_number, data.total_questions);
                         }
                     } else {
-                        alert('Ошибка при отправке кода: ' + data.error);
+                        alert('Ошибка при отправке кода: ' + (data.error || 'Неизвестная ошибка'));
                     }
                 } catch (error) {
                     console.error('Error sending code:', error);
                     removeTypingIndicator();
-                    alert('Ошибка при отправке кода');
+                    alert('Ошибка при отправке кода: ' + error.message);
                 }
+            }
+            
+            function showCodeTestResults(testResults, codeQuality) {
+                const resultsDiv = document.createElement('div');
+                resultsDiv.className = 'message ai-message';
+                resultsDiv.style.maxWidth = '90%';
+                
+                const passedTests = testResults.passed_tests;
+                const totalTests = testResults.total_tests;
+                const qualityScore = codeQuality.quality_score;
+                
+                resultsDiv.innerHTML = `
+                    <div style="background: ${passedTests === totalTests ? '#4caf50' : '#ff9800'}; padding: 20px; border-radius: 12px; color: white;">
+                        <h3 style="margin: 0 0 15px 0;">${passedTests === totalTests ? '✅' : '⚠️'} Результаты проверки</h3>
+                        <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>Тесты:</strong> ${passedTests}/${totalTests} пройдено<br>
+                            <strong>Качество кода:</strong> ${qualityScore}/100
+                        </div>
+                        ${testResults.failed_tests && testResults.failed_tests.length > 0 ? `
+                            <div style="margin-top: 10px;">
+                                <strong>Не пройденные тесты:</strong><br>
+                                ${testResults.failed_tests.map(t => `• ${t}`).join('<br>')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                document.getElementById('chatMessages').appendChild(resultsDiv);
+                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
             }
             
             function showEvaluation(evaluation, isCode) {
@@ -1037,10 +1088,80 @@
                 if (current === 0) {
                     progressText.textContent = "Не начато";
                 } else if (current < total) {
-                    progressText.textContent = `Вопрос ${current} из ${total}`;
+                    progressText.textContent = `Задание ${current} из ${total}`;
                 } else {
                     progressText.textContent = "Завершено";
                 }
+            }
+            
+            function displayCodingTask(task) {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'message ai-message';
+                taskDiv.style.maxWidth = '90%';
+                
+                let testCasesHtml = '';
+                task.test_cases.forEach((tc, idx) => {
+                    testCasesHtml += `
+                        <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 6px;">
+                            <strong>Тест ${idx + 1}:</strong> ${tc.description}<br>
+                            <code>Вход: ${JSON.stringify(tc.input)}</code><br>
+                            <code>Ожидается: ${JSON.stringify(tc.expected)}</code>
+                        </div>
+                    `;
+                });
+                
+                // Определяем цвет и иконку для уровня сложности
+                const difficultyConfig = {
+                    'easy': { color: '#4caf50', icon: '🟢', label: 'Легкая' },
+                    'medium': { color: '#ff9800', icon: '🟡', label: 'Средняя' },
+                    'hard': { color: '#f44336', icon: '🔴', label: 'Сложная' }
+                };
+                
+                const diff = difficultyConfig[task.difficulty] || difficultyConfig['medium'];
+                
+                taskDiv.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                padding: 20px; border-radius: 12px; color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0;">💻 Задача по программированию</h3>
+                            <span style="background: ${diff.color}; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold;">
+                                ${diff.icon} ${diff.label}
+                            </span>
+                        </div>
+                        <h4 style="margin: 0 0 10px 0;">${task.title}</h4>
+                        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <pre style="white-space: pre-wrap; margin: 0; font-size: 14px;">${task.description}</pre>
+                        </div>
+                        
+                        <div style="margin: 15px 0;">
+                            <strong>📝 Тест-кейсы:</strong>
+                            ${testCasesHtml}
+                            ${task.hidden_test_count > 0 ? `<p style="margin-top: 10px;">🔒 + ${task.hidden_test_count} скрытых тестов</p>` : ''}
+                        </div>
+                        
+                        ${task.hints.length > 0 ? `
+                            <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px;">
+                                <strong>💡 Подсказки:</strong><br>
+                                ${task.hints.map(h => `• ${h}`).join('<br>')}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top: 15px;">
+                            <strong>⏱️ Лимит времени:</strong> ${task.time_limit}с | 
+                            <strong>💾 Лимит памяти:</strong> ${task.memory_limit}MB
+                        </div>
+                        
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.2); border-radius: 6px;">
+                            <p style="margin: 0;">Напишите свое решение в редакторе кода и отправьте его для проверки.</p>
+                        </div>
+                    </div>
+                `;
+                
+                chatMessages.appendChild(taskDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Показываем кнопку для открытия редактора
+                messageInput.placeholder = "Напишите код в редакторе (нажмите кнопку справа) или продолжите текстом...";
             }
             
             function getCurrentTime() {
